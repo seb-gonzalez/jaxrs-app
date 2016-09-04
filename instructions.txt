@@ -1,0 +1,325 @@
+## SETTING UP
+-------------
+
+By the end of this course we will have our rest application and be able to deploy it in Tomcat.
+
+1. Open eclipse java EE.
+2. Download the Jersey .jars. We will use Maven -Java project management -.
+	2.1. Create a Maven project: right click> new project > Maven > Maven project
+	     - Select an Archetype -it is a template -
+	     Filter: jersey.   Select the entry that says: jersey-quickstart-webapp || If not here this archetype I have to register it:::
+	     >> Register archetype:
+	     	Group id: org.glassfish.jersey.archetypes
+	     	artifact id: jersey-quickstart-webapp
+	     	version:     2.16 / you can choose the latest version
+	     	HIT OK!!
+	     Now, look for the jersey-quickstart-webapp again in the filter.
+	     HIT NEXT.
+
+	     >> Project details >> group id: org.sebastian.addison >> artifact id: messenger
+
+	     Maven should have created the project at this moment.
+
+3. I need a servlet container to run the application:
+   >> Go to the server tabs >> Create a new server >> Tomcat 7 >> I need to browse to the tomcat installation folder
+   >> next
+   >> I want the messenger added.
+
+   Now we will see if this is deploy in the server. And it is, it will show default information when I go to the resource. "got it!!!"
+
+   RestAPI application built in less than 5 minutes.
+
+   ** HttpServlet - superclass - seems no to be found?,  you don´t have to download the jersey class
+   This is always provided by TOMCAT!!!!! which is a Servlet container!
+
+   Just in case the error persists: >> rigth click project > properties > Project Facets > Runtimes tab in the right of the screen and tick tomcat.
+
+
+
+## UNDERSTANDING THE APPLICATION STRUCTURE
+------------------------------------------
+
+http://localhost:8080/messager/webapi/myresource
+
+webapi/myresource ->> messenger is configure to accept any rest api request it has been preconfigure to go to the webapi.
+
+myresource: 
+There is a dummy resource that has been created by default in this project and when you access to it you get the message "Got it!"
+
+
+The servlet is withing the 'web.xml' and is the following:
+>> org.glassfish.jersey.servlet.ServletContainer
+
+Our restapi application is a starndard web application:
+- It has the jars for jersey
+- In the web.xml there is one Servlet which is map to some url pattern which handle all the requests
+
+
+
+## CREATING A RESOURCE
+----------------------
+
+What happen when a request comes in?  Jersey doesn´t really know what to do with that request.
+Jersey expects that there is some code you have written to manage that request.
+
+To hanle a resource you have to write a class that handle it:
+
+1. Create a new class: our own resource handler, it will called 'messages'
+   MessageResource - name
+
+    @Path("/messages") // This will be the resource to access to get the 'Hello World'
+	public class MessageResource {
+
+			@GET                            // We will be expecting a GET request
+			@Produces(MediaType.TEXT_PLAIN) // We could also retrieve XML or JSON (return content type)
+			public String getMessages() {
+				return "Hello World";       // Information that you will get once you query the resource
+			}
+	}
+
+
+
+## RETURNING XML RESPONSE
+-------------------------
+
+We need a service that return a list of messages.
+I will create a bunch of classes.
+
+>> new java class > Message || com.sebastian.messenger.model
+
+	public class Message {
+		private long id;
+		private String message;
+		private Date created;
+		private String author;
+		... getters and setters.....
+		//also a constructor by default
+		// and a constructor that initializes all members except data.
+	}
+
+We also need a Service that returns a list of messages
+
+>> new java class > MessageService || com.sebastian.messenger.service package
+
+	public List<Message> getAllMessages() {
+		Message m1 = new Message(1L, "Hello World!", "Sebastian");
+		Message m2 = new Message(2L, "Hola yayi!", "Saulín");
+		
+		List<Message> listMessages = new ArrayList<Message>();
+		listMessages.add(m1);
+		listMessages.add(m2);
+		
+		return listMessages;
+	}
+
+
+>> Now inside the class 'MessageResource':
+
+	private MessageService messageService = new MessageService();
+		
+		@GET
+		@Produces(MediaType.APPLICATION_XML)
+		public List<Message> getMessages() {
+			return messageService.getAllMessages();
+	}
+
+
+Seems like I will return a list of messages in XML format, but we need to tell
+the program that our 'Message' will be converted to XML by using a special annotation that we will put
+in the 'Message' class:
+
+>> @XmlRootEelement
+
+	@XmlRootElement
+	public class Message {
+
+
+
+## INSTALLING A REST API CLIENT
+-------------------------------
+
+There is a lot of rest api clients. You want to be able to send the request and examine the response
+with a lot of detail, and the browser is not enough.  We want a tool that help us do that:
+
+Chrome has a puglin for  - Postman - rest client -
+
+ *** I have got: Restclient, a debugger for RESTFUL web services *** 
+
+
+
+## BUILDING SERVICE STUBS
+-------------------------
+
+I will enhance the 'MessageService' class and add more methods style DAO:
+CRUD - create, read, update and delete.
+
+>> getAllMessages(), getMessage(long), addMessage(Message), updateMessage(Message), removeMessage(long)
+
+1 Create a 'Profile' class inside the model package:
+  long id
+  String profileName
+  String firstName
+  String lastName
+  Date created
+
+  ... getters , setters and constructors.
+
+2 Instead creating a database I will create a database class:
+  >> com.sebastian.messenger.database
+  >> DatabaseClass
+  >> It contains two static maps messages and profiles <Long, Message>,  <Long, Profile>
+  >> just two methods -> getMessages() and getProfiles.
+
+  this will be managed from the MessageService
+
+
+
+## ACCESSING PATH PARAMS
+------------------------
+
+Getting a single message from the API is what will implement:
+
+>> messages/1   -  this will retrieve me just one message
+
+This is how you map a subsecuence path -> messages/test
+
+@GET
+@Path("/test")
+@Produces(MediaType.TEXT_PLAIN)
+public String getTest() {
+	return "test";
+}
+
+to actually get a parameter you have to do this: @Path("/{messageId}")
+and @PathParam("messageId") long messageId
+
+@GET
+@Path("/{messageId}")
+@Produces(MediaType.APPLICATION_XML)
+public Message getMessage(@PathParam("messageId") long messageId) {
+	
+	System.out.println("aqui esta el valor: " + messageId);
+	return messageService.getMessage(messageId);
+	
+}
+
+
+## IMPLEMENTING POST - ADD
+--------------------
+We want to be able to add new messages so we need post!!!
+
+- Consumes JSON
+- Retrieve JSON
+
+
+
+    {
+        "author": "Sebastian",
+        "id": 7,
+        "message": "first message"
+    }
+
+
+	@POST
+	@Consumes(MediaType.APPLICATION_JSON)
+	@Produces(MediaType.APPLICATION_JSON)
+	public Message addMessage(Message message) {
+		return messageService.addMessage(message);			
+	}
+ 
+
+
+## IMPLEMENTING UPDATE AND DELETE
+---------------------------------
+
+		@PUT		
+		@Path("/{messageId}")
+		@Consumes(MediaType.APPLICATION_JSON)
+		@Produces(MediaType.APPLICATION_JSON)
+		public Message putMessage(@PathParam("messageId") long id, Message message) {
+			message.setId(id);
+			return messageService.updateMessage(message);
+		}
+		
+		@DELETE
+		@Path("/{messageId}")		
+		@Produces(MediaType.APPLICATION_JSON)
+		public void removeMessage(@PathParam("messageId") long messageId) {
+			messageService.removeMessage(messageId);
+		}
+
+
+
+
+## IMPLEMENTING PROFILE RESOURCE
+--------------------------------
+
+I will have to pretty much the same as I did before with messages
+
+
+
+## PAGINATION AND FILTERING
+---------------------------
+/messages?year=2015 -> one way of filtering
+/messages?start=10&size=20 -> pagination
+
+
+>> Open the 'MessageService' and add:
+
+	- getAllMessagesForYear(int year)
+	- getAllMessagesPaginated(int start, int size)
+
+	public List<Message> getAllMessagesForYear(int year) {
+		List<Message> messagesForYear = new ArrayList<Message>();
+		Calendar cal = Calendar.getInstance();
+		for(Message message : messages.values()) {
+			cal.setTime(message.getCreated());
+			if(cal.get(Calendar.YEAR) == year) {
+				messagesForYear.add(message);
+			}
+		}
+		
+		return messagesForYear;
+	}
+	
+	public List<Message> getAllMessagesPaginated(int start, int size) {
+		List<Message> list = new ArrayList<Message>(messages.values());
+		if(start+size > list.size()) return new ArrayList<Message>();
+		return list.subList(start, start + size);
+	}
+
+
+	>> Now in MessageResource:
+
+	@GET
+		@Produces(MediaType.APPLICATION_JSON)
+		public List<Message> getMessages(@QueryParam("year") int year,
+				                         @QueryParam("start") int start,
+				                         @QueryParam("size") int size   ) {
+			
+			if(year > 0) return messageService.getAllMessagesForYear(year);
+			if(start >= 0 && size >= 0) return messageService.getAllMessagesPaginated(start, size);
+			
+			return messageService.getAllMessages();
+		}
+
+
+    I have to use @QueryParam to grab the values I pass by parameter:
+
+	http://localhost:8080/messenger/webapi/messages?start=0&size=3
+
+
+
+## THE PARAM ANNOTATIONS
+------------------------
+
+
+## IMPLEMENTING SUBRESOURCES
+----------------------------
+/messages/{messageId}/comments/{commentId}
+
+In the MessageResource class you will create a handler method
+for /message/{messageId}/comments.
+
+Then you will call another resource that will deal with comments:
+CommentsResource
